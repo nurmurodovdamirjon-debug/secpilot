@@ -45,7 +45,16 @@ router = Router(name="secpilot_bot")
 
 
 def build_api_client(settings: Settings) -> SecPilotApiClient:
-    return SecPilotApiClient(base_url=settings.API_BASE_URL, api_key=settings.API_SECRET_KEY)
+    return SecPilotApiClient(
+        base_url=settings.API_BASE_URL,
+        api_key=settings.API_SECRET_KEY,
+        connect_timeout=settings.API_CONNECT_TIMEOUT_SECONDS,
+        read_timeout=settings.API_READ_TIMEOUT_SECONDS,
+        retry_attempts=settings.API_RETRY_ATTEMPTS,
+        retry_backoff_seconds=settings.API_RETRY_BACKOFF_SECONDS,
+        circuit_failure_threshold=settings.API_CIRCUIT_FAILURE_THRESHOLD,
+        circuit_reset_seconds=settings.API_CIRCUIT_RESET_SECONDS,
+    )
 
 
 async def _require_admin(message: Message, settings: Settings) -> bool:

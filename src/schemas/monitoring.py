@@ -12,3 +12,4 @@ class MonitoringStatus(BaseModel):
     last_check_at: datetime | None = None
     last_status: str | None = None
     last_detail: dict[str, object] | None = None
+    scheduler: dict[str, object] | None = None

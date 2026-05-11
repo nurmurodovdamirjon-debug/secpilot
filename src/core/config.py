@@ -1,7 +1,8 @@
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import urlparse
 
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,8 +17,14 @@ class Settings(BaseSettings):
 
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
-    API_BASE_URL: str = "http://localhost:8000"
+    API_BASE_URL: str = "http://api:8000"
     API_SECRET_KEY: str = "change-me"
+    API_CONNECT_TIMEOUT_SECONDS: float = Field(default=5.0, gt=0)
+    API_READ_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0)
+    API_RETRY_ATTEMPTS: int = Field(default=3, ge=1)
+    API_RETRY_BACKOFF_SECONDS: float = Field(default=0.25, ge=0)
+    API_CIRCUIT_FAILURE_THRESHOLD: int = Field(default=5, ge=1)
+    API_CIRCUIT_RESET_SECONDS: float = Field(default=30.0, gt=0)
     JWT_SECRET_KEY: str = "change-me"
 
     BOT_TOKEN: str = "change-me"
@@ -73,6 +80,25 @@ class Settings(BaseSettings):
     @property
     def allowed_target_set(self) -> set[str]:
         return _parse_str_csv(self.ALLOWED_TARGETS)
+
+    @model_validator(mode="after")
+    def validate_production_environment(self) -> "Settings":
+        if self.APP_ENV not in {"production", "staging"}:
+            return self
+
+        if self.API_SECRET_KEY == "change-me":
+            raise ValueError("API_SECRET_KEY must be changed outside development.")
+        if self.JWT_SECRET_KEY == "change-me":
+            raise ValueError("JWT_SECRET_KEY must be changed outside development.")
+        if self.BOT_TOKEN == "change-me":
+            raise ValueError("BOT_TOKEN must be changed outside development.")
+        if not self.BOT_ADMIN_IDS.strip():
+            raise ValueError("BOT_ADMIN_IDS must contain at least one admin outside development.")
+
+        hostname = (urlparse(self.API_BASE_URL).hostname or "").lower()
+        if hostname in {"localhost", "127.0.0.1", "::1"}:
+            raise ValueError("API_BASE_URL must use the docker compose service name, for example http://api:8000.")
+        return self
 
 
 def _parse_int_csv(value: str) -> set[int]:

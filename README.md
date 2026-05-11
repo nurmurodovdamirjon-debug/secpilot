@@ -8,7 +8,7 @@ The current repository is an MVP security foundation. It contains the service la
 
 Implemented now:
 
-- FastAPI app with `/health/live`, `/health/ready`, and `/metrics`
+- FastAPI app with `/health`, `/health/live`, `/ready`, `/health/ready`, and `/metrics`
 - API-key protected `/api/v1/assets` CRUD for authorized target management
 - Defensive-only DNS, SSL/TLS, passive subdomain, and monitoring endpoints for active domain/url assets
 - aiogram 3 Telegram bot with Uzbek admin UX, reply keyboard, asset list/add/check/delete, DNS, SSL, subdomain, monitoring, status, help, and safe placeholders
@@ -83,7 +83,9 @@ docker compose up --build
 Smoke checks:
 
 ```bash
+curl http://localhost:8000/health
 curl http://localhost:8000/health/live
+curl http://localhost:8000/ready
 curl http://localhost:8000/health/ready
 curl http://localhost:8000/metrics
 ```
@@ -130,6 +132,7 @@ Bot menu buttons:
 Manual Telegram smoke test:
 
 1. Set `BOT_TOKEN`, `BOT_ADMIN_IDS`, `API_SECRET_KEY`, and `API_BASE_URL`.
+   In Docker Compose, keep `API_BASE_URL=http://api:8000`; do not use `localhost` from inside the bot container.
 2. Run migrations with `alembic upgrade head`.
 3. Start the stack with `docker compose up --build`.
 4. Send `/start` from an admin Telegram account and verify the Uzbek menu appears.

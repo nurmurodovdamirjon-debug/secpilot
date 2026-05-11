@@ -28,6 +28,7 @@ def configure_logging(settings: Settings) -> None:
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
+        structlog.processors.format_exc_info,
         mask_secrets,
     ]
     if settings.STRUCTURED_LOGS:

@@ -2,6 +2,7 @@
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from structlog.contextvars import get_contextvars
 
 
 class ApiError(Exception):
@@ -11,8 +12,9 @@ class ApiError(Exception):
         self.message = message
 
 
-async def api_error_handler(_: Request, exc: ApiError) -> JSONResponse:
+async def api_error_handler(request: Request, exc: ApiError) -> JSONResponse:
+    correlation_id = getattr(request.state, "correlation_id", None) or get_contextvars().get("correlation_id")
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": {"code": exc.code, "message": exc.message}},
+        content={"error": {"code": exc.code, "message": exc.message}, "correlation_id": correlation_id},
     )

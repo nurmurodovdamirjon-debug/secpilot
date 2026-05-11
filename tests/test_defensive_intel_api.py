@@ -57,6 +57,29 @@ def test_dns_audit_requires_active_whitelisted_domain_asset(
     assert db_session.query(AuditLog).filter(AuditLog.action == "dns.audit").count() == 1
 
 
+def test_dns_audit_contract_endpoint_accepts_asset_request(
+    db_session: Session,
+    monkeypatch,
+) -> None:
+    app.dependency_overrides[get_db_session] = lambda: db_session
+    app.dependency_overrides[get_settings] = _settings
+    asset = _add_asset(db_session)
+
+    def fake_collect(domain: str, timeout: float) -> DnsAuditResult:
+        return DnsAuditResult(domain=domain, a_records=["1.1.1.1"], spf=True, dmarc=True)
+
+    monkeypatch.setattr("src.api.routes.intel.collect_dns_audit", fake_collect)
+    response = TestClient(app).post(
+        "/api/v1/dns/audit",
+        headers=_headers(),
+        json={"asset_id": str(asset.id)},
+    )
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json()["domain"] == "example.com"
+
+
 def test_dns_audit_rejects_non_domain_assets(db_session: Session) -> None:
     app.dependency_overrides[get_db_session] = lambda: db_session
     app.dependency_overrides[get_settings] = _settings
@@ -122,8 +145,26 @@ def test_monitoring_enable_disable_and_status(db_session: Session) -> None:
     app.dependency_overrides.clear()
     assert enable_response.status_code == 200
     assert MonitoringStatus(**status_response.json()).enabled is True
+    assert "scheduler" in status_response.json()
     assert disable_response.status_code == 200
     assert disable_response.json()["enabled"] is False
+
+
+def test_monitoring_status_contract_endpoint_returns_scheduler_status(db_session: Session) -> None:
+    app.dependency_overrides[get_db_session] = lambda: db_session
+    app.dependency_overrides[get_settings] = _settings
+    asset = _add_asset(db_session)
+
+    response = TestClient(app).post(
+        "/api/v1/monitoring/status",
+        headers=_headers(),
+        json={"asset_id": str(asset.id)},
+    )
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json()["asset_id"] == str(asset.id)
+    assert response.json()["scheduler"]["backend"] == "celery"
 
 
 def test_intel_endpoints_reject_unknown_asset(db_session: Session) -> None:

@@ -7,6 +7,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from src.core.config import Settings
 from src.db.models import Asset, MonitoringState
 from src.schemas.monitoring import MonitoringStatus
 from src.services.audit_log import write_audit_event
@@ -59,6 +60,19 @@ def monitoring_status_from_state(state: MonitoringState) -> MonitoringStatus:
         last_status=state.last_status,
         last_detail=state.last_detail,
     )
+
+
+def monitoring_scheduler_status(settings: Settings) -> dict[str, object]:
+    return {
+        "backend": settings.QUEUE_BACKEND,
+        "task": "secpilot.monitoring.run_enabled_checks",
+        "interval_seconds": settings.MONITORING_INTERVAL_SECONDS,
+        "enabled": settings.QUEUE_BACKEND == "celery",
+    }
+
+
+def with_monitoring_scheduler_status(status: MonitoringStatus, settings: Settings) -> MonitoringStatus:
+    return status.model_copy(update={"scheduler": monitoring_scheduler_status(settings)})
 
 
 def record_monitoring_check(

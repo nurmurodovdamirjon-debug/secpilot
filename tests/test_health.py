@@ -12,6 +12,26 @@ def test_liveness_endpoint_returns_ok() -> None:
     assert response.json()["status"] == "ok"
 
 
+def test_health_alias_returns_ok() -> None:
+    client = TestClient(app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
+def test_ready_alias_returns_dependency_status(monkeypatch) -> None:
+    monkeypatch.setattr("src.api.routes.health.check_database_ready", lambda: True)
+    monkeypatch.setattr("src.api.routes.health.check_redis_ready", lambda: True)
+    client = TestClient(app)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json()["dependencies"] == {"database": True, "redis": True}
+
+
 def test_metrics_endpoint_exposes_prometheus_payload() -> None:
     client = TestClient(app)
 

@@ -39,13 +39,13 @@ async def test_api_client_sends_api_key_and_lists_assets() -> None:
 @pytest.mark.asyncio
 async def test_api_client_fetches_defensive_intel_reports() -> None:
     async def handler(request: Request) -> Response:
-        if request.url.path == "/api/v1/dns/asset-1":
+        if request.url.path == "/api/v1/dns/audit":
             return Response(200, json={"domain": "example.com", "a_records": ["1.1.1.1"], "spf": True})
-        if request.url.path == "/api/v1/ssl/asset-1":
+        if request.url.path == "/api/v1/ssl/audit":
             return Response(200, json={"domain": "example.com", "issuer": "Let's Encrypt"})
-        if request.url.path == "/api/v1/subdomains/asset-1":
+        if request.url.path == "/api/v1/subdomains/passive":
             return Response(200, json={"domain": "example.com", "subdomains": []})
-        if request.url.path == "/api/v1/monitoring/asset-1":
+        if request.url.path == "/api/v1/monitoring/status":
             return Response(200, json={"asset_id": "asset-1", "enabled": True})
         return Response(404)
 

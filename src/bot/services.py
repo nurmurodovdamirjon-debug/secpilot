@@ -2,7 +2,15 @@
 
 from ipaddress import ip_address, ip_network
 
-from src.bot.api_client import BotApiError, BotApiUnavailableError, BotAsset, HealthResult
+from src.bot.api_client import (
+    BotApiCircuitOpenError,
+    BotApiError,
+    BotApiInvalidResponseError,
+    BotApiTimeoutError,
+    BotApiUnavailableError,
+    BotAsset,
+    HealthResult,
+)
 from src.services.target_normalization import normalize_target_candidates
 
 
@@ -65,14 +73,22 @@ def format_status_message(
 
 
 def format_api_error(error: BotApiError) -> str:
+    if isinstance(error, BotApiCircuitOpenError):
+        return "Backend vaqtincha offline. Bir ozdan keyin qayta urinib ko'ring."
+    if isinstance(error, BotApiTimeoutError):
+        return "Backend API javobi kechikdi. Keyinroq qayta urinib ko'ring."
     if isinstance(error, BotApiUnavailableError):
-        return "Backend API bilan bog‘lanib bo‘lmadi. Keyinroq qayta urinib ko‘ring."
+        return "Backend API offline yoki ulanish imkonsiz. Keyinroq qayta urinib ko'ring."
+    if isinstance(error, BotApiInvalidResponseError):
+        return "Backend API noto'g'ri javob qaytardi. Admin loglarini tekshiring."
     if error.code == "duplicate_asset":
         return "Bu asset allaqachon whitelistda bor."
     if error.code == "invalid_target":
         return "Asset qiymati noto‘g‘ri. Domain, IP, CIDR yoki URL formatini tekshiring."
     if error.code == "unauthorized":
         return "Bot backend API bilan avtorizatsiyadan o‘ta olmadi. API kalit sozlamasini tekshiring."
+    if error.code in {"asset_not_found", "asset_not_active", "asset_type_not_allowed", "invalid_asset_target"}:
+        return "Unauthorized asset. Faqat whitelistdagi active domain yoki url assetlar uchun ruxsat bor."
     return "Backend API xatolik qaytardi. Keyinroq qayta urinib ko‘ring."
 
 
@@ -129,8 +145,17 @@ def format_monitoring_report(payload: dict[str, object]) -> str:
             f"📡 Monitoring: {enabled}",
             f"So‘nggi tekshiruv: {payload.get('last_check_at') or 'hali yo‘q'}",
             f"So‘nggi status: {payload.get('last_status') or 'noma’lum'}",
+            f"Scheduler: {_scheduler_label(payload.get('scheduler'))}",
         ]
     )
+
+
+def _scheduler_label(value: object) -> str:
+    if not isinstance(value, dict):
+        return "noma'lum"
+    backend = value.get("backend") or "noma'lum"
+    interval = value.get("interval_seconds") or "noma'lum"
+    return f"{backend}, interval={interval}s"
 
 
 def _dependency_label(value: object) -> str:

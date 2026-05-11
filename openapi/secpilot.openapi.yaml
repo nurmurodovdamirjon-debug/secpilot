@@ -6,18 +6,34 @@ info:
 servers:
   - url: http://localhost:8000
 paths:
+  /health:
+    get:
+      summary: Liveness check alias
+      responses:
+        "200":
+          description: OK
   /health/live:
     get:
       summary: Liveness check
       responses:
         "200":
           description: OK
+  /ready:
+    get:
+      summary: Readiness check alias
+      responses:
+        "200":
+          description: Ready
+        "503":
+          description: Not ready
   /health/ready:
     get:
       summary: Readiness check
       responses:
         "200":
           description: Ready
+        "503":
+          description: Not ready
   /api/v1/assets:
     get:
       summary: List authorized assets
@@ -112,14 +128,18 @@ paths:
           description: Asset soft deleted
         "404":
           description: Asset not found
-  /api/v1/dns/{asset_id}:
-    get:
+  /api/v1/dns/audit:
+    post:
       summary: Defensive DNS audit for an active whitelisted domain or URL asset
       description: Passive DNS record collection only. Requires the asset to be active and whitelisted.
       security:
         - apiKeyAuth: []
-      parameters:
-        - $ref: "#/components/parameters/AssetId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetActionRequest"
       responses:
         "200":
           description: DNS audit result
@@ -135,14 +155,18 @@ paths:
           description: Asset not found
         "429":
           description: Rate limit exceeded
-  /api/v1/ssl/{asset_id}:
-    get:
+  /api/v1/ssl/audit:
+    post:
       summary: Defensive SSL/TLS audit for an active whitelisted domain or URL asset
       description: HTTPS certificate, TLS version, expiry, and HSTS summary only.
       security:
         - apiKeyAuth: []
-      parameters:
-        - $ref: "#/components/parameters/AssetId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetActionRequest"
       responses:
         "200":
           description: SSL/TLS audit result
@@ -158,14 +182,18 @@ paths:
           description: Asset not found
         "429":
           description: Rate limit exceeded
-  /api/v1/subdomains/{asset_id}:
-    get:
+  /api/v1/subdomains/passive:
+    post:
       summary: Passive subdomain discovery for an active whitelisted domain or URL asset
       description: Uses passive certificate transparency sources only. No brute force or active probing.
       security:
         - apiKeyAuth: []
-      parameters:
-        - $ref: "#/components/parameters/AssetId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetActionRequest"
       responses:
         "200":
           description: Passive subdomain discovery result
@@ -181,13 +209,17 @@ paths:
           description: Asset not found
         "429":
           description: Rate limit exceeded
-  /api/v1/monitoring/{asset_id}:
-    get:
+  /api/v1/monitoring/status:
+    post:
       summary: Monitoring status for an active whitelisted domain or URL asset
       security:
         - apiKeyAuth: []
-      parameters:
-        - $ref: "#/components/parameters/AssetId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetActionRequest"
       responses:
         "200":
           description: Monitoring status
@@ -201,6 +233,62 @@ paths:
           description: Scope denied
         "404":
           description: Asset not found
+  /api/v1/dns/{asset_id}:
+    get:
+      summary: Backward-compatible defensive DNS audit endpoint
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: DNS audit result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DnsAuditResult"
+  /api/v1/ssl/{asset_id}:
+    get:
+      summary: Backward-compatible defensive SSL/TLS audit endpoint
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: SSL/TLS audit result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SslAuditResult"
+  /api/v1/subdomains/{asset_id}:
+    get:
+      summary: Backward-compatible passive subdomain discovery endpoint
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: Passive subdomain discovery result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubdomainDiscoveryResult"
+  /api/v1/monitoring/{asset_id}:
+    get:
+      summary: Backward-compatible monitoring status endpoint
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: Monitoring status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitoringStatus"
   /api/v1/monitoring/{asset_id}/enable:
     post:
       summary: Enable defensive monitoring for an active whitelisted domain or URL asset
@@ -354,6 +442,14 @@ components:
         created_at:
           type: string
           format: date-time
+    AssetActionRequest:
+      type: object
+      required:
+        - asset_id
+      properties:
+        asset_id:
+          type: string
+          format: uuid
     DnsAuditResult:
       type: object
       properties:
@@ -462,6 +558,11 @@ components:
             - string
             - "null"
         last_detail:
+          type:
+            - object
+            - "null"
+          additionalProperties: true
+        scheduler:
           type:
             - object
             - "null"

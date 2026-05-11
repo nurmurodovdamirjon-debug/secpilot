@@ -12,7 +12,9 @@
 
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/health` | Liveness alias for container and bot checks |
 | GET | `/health/live` | Liveness |
+| GET | `/ready` | Readiness alias for Docker healthchecks |
 | GET | `/health/ready` | Readiness |
 | GET | `/metrics` | Prometheus metrics |
 | POST | `/api/v1/assets` | Create authorized target |
@@ -20,10 +22,14 @@
 | GET | `/api/v1/assets/{asset_id}` | Get one authorized target |
 | PATCH | `/api/v1/assets/{asset_id}` | Update label or status |
 | DELETE | `/api/v1/assets/{asset_id}` | Soft delete authorized target |
-| GET | `/api/v1/dns/{asset_id}` | Defensive DNS audit for active domain/url asset |
-| GET | `/api/v1/ssl/{asset_id}` | Defensive SSL/TLS audit for active domain/url asset |
-| GET | `/api/v1/subdomains/{asset_id}` | Passive subdomain discovery for active domain/url asset |
-| GET | `/api/v1/monitoring/{asset_id}` | Monitoring status for active domain/url asset |
+| POST | `/api/v1/dns/audit` | Defensive DNS audit for active domain/url asset |
+| POST | `/api/v1/ssl/audit` | Defensive SSL/TLS audit for active domain/url asset |
+| POST | `/api/v1/subdomains/passive` | Passive subdomain discovery for active domain/url asset |
+| POST | `/api/v1/monitoring/status` | Monitoring status and scheduler metadata for active domain/url asset |
+| GET | `/api/v1/dns/{asset_id}` | Backward-compatible DNS audit endpoint |
+| GET | `/api/v1/ssl/{asset_id}` | Backward-compatible SSL/TLS audit endpoint |
+| GET | `/api/v1/subdomains/{asset_id}` | Backward-compatible passive subdomain endpoint |
+| GET | `/api/v1/monitoring/{asset_id}` | Backward-compatible monitoring status endpoint |
 | POST | `/api/v1/monitoring/{asset_id}/enable` | Enable monitoring |
 | POST | `/api/v1/monitoring/{asset_id}/disable` | Disable monitoring |
 | POST | `/api/v1/audits/web` | Roadmap web audit job |
@@ -95,6 +101,7 @@ Implemented endpoints are passive and authorized-scope only:
 - DNS audit collects DNS records, SPF/DMARC presence, CNAME, and best-effort ASN/provider metadata.
 - SSL/TLS audit checks HTTPS certificate summary, expiry, TLS version, and HSTS.
 - Subdomain discovery uses passive certificate transparency data only.
-- Monitoring stores enable/disable state and last check metadata; background checks log alerts to `audit_log` and can notify Telegram admins.
+- Monitoring stores enable/disable state and last check metadata; status responses include Celery scheduler metadata for `secpilot.monitoring.run_enabled_checks`.
+- Telegram bot calls the POST contract endpoints with `{"asset_id": "<uuid>"}` and sends `X-Correlation-ID` for log tracing.
 
 These modules do not brute force, exploit, scan ports, attempt login, collect credentials, or mutate remote infrastructure.

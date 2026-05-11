@@ -9,12 +9,14 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health/live")
+@router.get("/health")
 def live() -> dict[str, str]:
     settings = get_settings()
     return {"status": "ok", "service": settings.APP_NAME, "version": settings.APP_VERSION}
 
 
 @router.get("/health/ready")
+@router.get("/ready")
 def ready() -> dict[str, object]:
     database_ready = check_database_ready()
     redis_ready = check_redis_ready()
