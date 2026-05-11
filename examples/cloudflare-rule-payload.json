@@ -1,0 +1,6 @@
+{
+  "description": "SecPilot temporary rate limit for suspicious login traffic",
+  "expression": "(http.request.uri.path eq \"/login\")",
+  "action": "managed_challenge",
+  "enabled": true
+}

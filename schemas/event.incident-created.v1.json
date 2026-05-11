@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "incident.created.v1",
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "time",
+    "correlation_id",
+    "data"
+  ],
+  "properties": {
+    "type": {
+      "const": "incident.created.v1"
+    },
+    "id": {
+      "type": "string"
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "incident_id",
+        "severity",
+        "summary"
+      ],
+      "properties": {
+        "incident_id": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "source_ip": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

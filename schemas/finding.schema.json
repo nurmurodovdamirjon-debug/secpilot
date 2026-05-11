@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Finding",
+  "type": "object",
+  "required": [
+    "severity",
+    "category",
+    "title"
+  ],
+  "properties": {
+    "severity": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "category": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "object"
+    },
+    "remediation": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,1 @@
+"""SecPilot Defense application package."""

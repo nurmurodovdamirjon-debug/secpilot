@@ -1,0 +1,95 @@
+openapi: 3.1.0
+info:
+  title: SecPilot Defense API
+  version: 1.0.0
+  description: Telegram-first cybersecurity monitoring, audit and defense API.
+servers:
+  - url: http://localhost:8000
+paths:
+  /health/live:
+    get:
+      summary: Liveness check
+      responses:
+        "200":
+          description: OK
+  /health/ready:
+    get:
+      summary: Readiness check
+      responses:
+        "200":
+          description: Ready
+  /api/v1/audits/web:
+    post:
+      summary: Create web audit job
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebAuditRequest"
+      responses:
+        "202":
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobAccepted"
+        "403":
+          description: Scope denied
+  /api/v1/jobs/{job_id}:
+    get:
+      summary: Get job status
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job status
+  /api/v1/incidents/{incident_id}/actions/block-ip:
+    post:
+      summary: Block source IP for an incident
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: incident_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          description: Action accepted
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    WebAuditRequest:
+      type: object
+      required:
+        - asset_id
+        - target
+      properties:
+        asset_id:
+          type: string
+        target:
+          type: string
+          format: uri
+        priority:
+          type: string
+          enum: [low, normal, high]
+          default: normal
+    JobAccepted:
+      type: object
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+          example: queued

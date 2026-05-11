@@ -1,0 +1,17 @@
+groups:
+  - name: secpilot
+    rules:
+      - alert: SecPilotApiDown
+        expr: up{job="secpilot-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: SecPilot API down
+      - alert: SecPilotQueueLagHigh
+        expr: secpilot_worker_queue_depth > 500
+        for: 5m
+        labels:
+          severity: high
+        annotations:
+          summary: Worker queue lag high
