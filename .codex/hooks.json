@@ -1,0 +1,61 @@
+{
+  "features": {
+    "codex_hooks": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "name": "secpilot-session-start-context",
+        "command": "python .codex/hooks/session_start_context.py",
+        "timeout": 5,
+        "statusMessage": "Loading SecPilot Defense guardrails and project context"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "name": "secpilot-user-prompt-guard",
+        "command": "python .codex/hooks/user_prompt_guard.py",
+        "timeout": 5,
+        "statusMessage": "Checking prompt against defensive cybersecurity policy"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "name": "secpilot-pre-tool-security",
+        "command": "python .codex/hooks/pre_tool_use_security.py",
+        "timeout": 5,
+        "statusMessage": "Checking command for dangerous security or destructive behavior"
+      },
+      {
+        "name": "secpilot-pre-tool-repo-guard",
+        "command": "python .codex/hooks/pre_tool_use_repo_guard.py",
+        "timeout": 5,
+        "statusMessage": "Checking repository safety rules"
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "name": "secpilot-permission-request-policy",
+        "command": "python .codex/hooks/permission_request_policy.py",
+        "timeout": 5,
+        "statusMessage": "Reviewing elevated permission request"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "name": "secpilot-post-tool-review",
+        "command": "python .codex/hooks/post_tool_use_review.py",
+        "timeout": 10,
+        "statusMessage": "Reviewing generated changes for drift and quality risks"
+      }
+    ],
+    "Stop": [
+      {
+        "name": "secpilot-stop-quality-gate",
+        "command": "python .codex/hooks/stop_quality_gate.py",
+        "timeout": 20,
+        "statusMessage": "Running final quality gate"
+      }
+    ]
+  }
+}
