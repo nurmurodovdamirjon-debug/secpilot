@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: SecPilot Defense API
   version: 1.0.0
-  description: Telegram-first cybersecurity monitoring, audit and defense API.
+  description: Telegram-first defensive cybersecurity monitoring, audit, and defense API.
 servers:
   - url: http://localhost:8000
 paths:
@@ -18,9 +18,103 @@ paths:
       responses:
         "200":
           description: Ready
+  /api/v1/assets:
+    get:
+      summary: List authorized assets
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - name: include_deleted
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Asset list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Asset"
+        "401":
+          description: Unauthorized
+    post:
+      summary: Create authorized asset
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetCreate"
+      responses:
+        "201":
+          description: Asset created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Asset"
+        "401":
+          description: Unauthorized
+        "409":
+          description: Duplicate asset
+        "422":
+          description: Invalid target
+  /api/v1/assets/{asset_id}:
+    get:
+      summary: Get authorized asset
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: Asset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Asset"
+        "404":
+          description: Asset not found
+    patch:
+      summary: Update authorized asset
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetUpdate"
+      responses:
+        "200":
+          description: Asset updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Asset"
+        "404":
+          description: Asset not found
+    delete:
+      summary: Soft delete authorized asset
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "204":
+          description: Asset soft deleted
+        "404":
+          description: Asset not found
   /api/v1/audits/web:
     post:
-      summary: Create web audit job
+      summary: Roadmap create web audit job
       security:
         - bearerAuth: []
       requestBody:
@@ -40,7 +134,7 @@ paths:
           description: Scope denied
   /api/v1/jobs/{job_id}:
     get:
-      summary: Get job status
+      summary: Roadmap get job status
       parameters:
         - name: job_id
           in: path
@@ -52,7 +146,7 @@ paths:
           description: Job status
   /api/v1/incidents/{incident_id}/actions/block-ip:
     post:
-      summary: Block source IP for an incident
+      summary: Roadmap approval-gated source IP block
       security:
         - bearerAuth: []
       parameters:
@@ -65,11 +159,72 @@ paths:
         "202":
           description: Action accepted
 components:
+  parameters:
+    AssetId:
+      name: asset_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   securitySchemes:
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
     bearerAuth:
       type: http
       scheme: bearer
   schemas:
+    AssetCreate:
+      type: object
+      required:
+        - asset_type
+        - value
+      properties:
+        asset_type:
+          type: string
+          enum: [domain, ip, cidr, url]
+        value:
+          type: string
+          maxLength: 512
+        label:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+    AssetUpdate:
+      type: object
+      properties:
+        label:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+        status:
+          type: string
+          enum: [active, deleted]
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        asset_type:
+          type: string
+        value:
+          type: string
+        normalized_value:
+          type: string
+        label:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
     WebAuditRequest:
       type: object
       required:

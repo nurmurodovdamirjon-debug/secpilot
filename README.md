@@ -2,19 +2,22 @@
 
 SecPilot Defense is a Telegram-first defensive cybersecurity monitoring, incident response, deception, and infrastructure protection platform.
 
-The current repository is an MVP skeleton. It contains the service layout, safety policy foundation, health endpoints, metrics endpoint, bot entrypoint, database and worker scaffolding, Docker Compose deployment, and Codex workflow guardrails. Broader monitoring, enrichment, honeypot, reporting, and defense actions are roadmap capabilities unless explicitly implemented in `src/`.
+The current repository is an MVP security foundation. It contains the service layout, safety policy foundation, health endpoints, metrics endpoint, bot entrypoint, DB-backed authorized target management, PolicyGate enforcement, audit persistence, database and worker scaffolding, Docker Compose deployment, and Codex workflow guardrails. Broader monitoring, enrichment, honeypot, reporting, and defense actions are roadmap capabilities unless explicitly implemented in `src/`.
 
 ## Current MVP
 
 Implemented now:
 
 - FastAPI app with `/health/live`, `/health/ready`, and `/metrics`
+- API-key protected `/api/v1/assets` CRUD for authorized target management
 - aiogram 3 bot entrypoint and Telegram admin whitelist helpers
 - Pydantic settings loaded from environment variables
 - SQLAlchemy/Alembic skeleton for PostgreSQL
+- DB-backed target whitelist persistence on `assets`
+- DB-backed `AuditLog` persistence for asset and policy decisions
 - Redis integration scaffold
 - Celery worker scaffold
-- Defensive-only `PolicyGate` service
+- Defensive-only `PolicyGate` service with real DB whitelist validation
 - Structured logging and Prometheus metric helpers
 - Docker Compose services for `api`, `bot`, `worker`, `postgres`, and `redis`
 - Repository Codex guardrails under `AGENTS.md`, `.agents/`, and `.codex/`
@@ -62,6 +65,8 @@ Mandatory controls:
 - Least privilege for services, tokens, containers, and integrations
 - Fail-closed defaults when actor, target, scope, risk, or approval is unclear
 
+The DB whitelist is the source of truth for PolicyGate target checks. `ALLOWED_TARGETS` remains legacy environment context and does not bypass DB validation.
+
 ## Local Run
 
 Create a local environment file, then start the stack:
@@ -77,6 +82,12 @@ Smoke checks:
 curl http://localhost:8000/health/live
 curl http://localhost:8000/health/ready
 curl http://localhost:8000/metrics
+```
+
+Asset API smoke check:
+
+```bash
+curl -H "X-API-Key: $API_SECRET_KEY" http://localhost:8000/api/v1/assets
 ```
 
 Run migrations:

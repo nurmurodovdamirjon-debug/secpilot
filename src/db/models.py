@@ -1,11 +1,16 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, String, Text, text
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+
+
+def json_dict_type() -> JSON:
+    return JSON().with_variant(JSONB(), "postgresql")
 
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -21,11 +26,15 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class Asset(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "assets"
-    __table_args__ = (Index("ix_assets_owner_value", "owner_id", "value", unique=True),)
+    __table_args__ = (
+        Index("ix_assets_owner_value", "owner_id", "value", unique=True),
+        Index("ix_assets_type_normalized_value", "asset_type", "normalized_value", unique=True),
+    )
 
     owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
     asset_type: Mapped[str] = mapped_column(String(50), nullable=False)
     value: Mapped[str] = mapped_column(String(512), nullable=False)
+    normalized_value: Mapped[str] = mapped_column(String(512), nullable=False)
     label: Mapped[str | None] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="active", server_default="active")
 
@@ -57,7 +66,7 @@ class Alert(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     message: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="open", server_default="open")
-    detail_jsonb: Mapped[dict | None] = mapped_column(JSONB)
+    detail_jsonb: Mapped[dict[str, Any] | None] = mapped_column(json_dict_type())
 
     asset: Mapped[Asset | None] = relationship(back_populates="alerts")
 
@@ -71,7 +80,7 @@ class Incident(UUIDPrimaryKeyMixin, Base):
     state: Mapped[str] = mapped_column(String(50), nullable=False, default="open", server_default="open")
     summary: Mapped[str | None] = mapped_column(Text)
     source_ip: Mapped[str | None] = mapped_column(String(64))
-    timeline_jsonb: Mapped[dict | None] = mapped_column(JSONB)
+    timeline_jsonb: Mapped[dict[str, Any] | None] = mapped_column(json_dict_type())
     opened_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -92,6 +101,6 @@ class AuditLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     object_type: Mapped[str | None] = mapped_column(String(100))
     object_id: Mapped[str | None] = mapped_column(String(255))
     result: Mapped[str | None] = mapped_column(String(100))
-    meta_jsonb: Mapped[dict | None] = mapped_column(JSONB)
+    meta_jsonb: Mapped[dict[str, Any] | None] = mapped_column(json_dict_type())
     prev_hash: Mapped[str | None] = mapped_column(String(128))
     entry_hash: Mapped[str | None] = mapped_column(String(128))

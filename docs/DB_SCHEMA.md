@@ -24,10 +24,12 @@ id UUID PRIMARY KEY
 owner_id UUID REFERENCES users(id)
 asset_type TEXT NOT NULL
 value TEXT NOT NULL
+normalized_value TEXT NOT NULL
 label TEXT
 status TEXT DEFAULT 'active'
 created_at TIMESTAMPTZ DEFAULT now()
 UNIQUE(owner_id, value)
+UNIQUE(asset_type, normalized_value)
 ```
 
 ### asset_scopes
@@ -169,6 +171,7 @@ CREATE INDEX idx_honeypot_headers ON honeypot_events USING GIN(headers_jsonb);
 CREATE INDEX idx_incidents_timeline ON incidents USING GIN(timeline_jsonb);
 CREATE INDEX idx_jobs_status_created ON jobs(status, created_at);
 CREATE INDEX idx_audit_log_created ON audit_log(created_at);
+CREATE UNIQUE INDEX ix_assets_type_normalized_value ON assets(asset_type, normalized_value);
 ```
 
 ## 4. Retention

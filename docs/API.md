@@ -1,67 +1,83 @@
 # API Design
 
-## 1. API prinsiplar
+## 1. API Principles
 
-- REST + JSON
-- `/api/v1` public/admin API
-- `/internal` service-to-service API
-- Har requestda `request_id`
-- Risky actionlar uchun `Idempotency-Key`
-- OpenAPI schema: `openapi/secpilot.openapi.yaml`
+- REST + JSON.
+- `/api/v1` is the public/admin API.
+- `/internal` is reserved for service-to-service APIs.
+- Public contracts should stay documented in `openapi/secpilot.openapi.yaml`.
+- Risky future actions require explicit authorization, PolicyGate validation, audit logging, and manual approval where required.
 
-## 2. Endpointlar
+## 2. Endpoints
 
-| Method | Path | Vazifa |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/health/live` | liveness |
-| GET | `/health/ready` | readiness |
+| GET | `/health/live` | Liveness |
+| GET | `/health/ready` | Readiness |
 | GET | `/metrics` | Prometheus metrics |
-| POST | `/api/v1/assets` | target qo‘shish |
-| GET | `/api/v1/assets` | targetlar |
-| POST | `/api/v1/audits/web` | web audit job |
-| POST | `/api/v1/audits/dns` | DNS audit |
-| POST | `/api/v1/audits/ssl` | SSL audit |
-| POST | `/api/v1/audits/ports` | port audit |
-| GET | `/api/v1/jobs/{job_id}` | job status |
-| GET | `/api/v1/findings/{id}` | finding details |
-| POST | `/api/v1/incidents/{id}/actions/block-ip` | IP block |
-| POST | `/api/v1/incidents/{id}/actions/cloudflare-rate-limit` | Cloudflare rate-limit |
-| POST | `/api/v1/honeypot/events` | honeypot event |
-| POST | `/api/v1/agents/advice` | AI advice |
-| GET | `/api/v1/reports/{id}` | report |
+| POST | `/api/v1/assets` | Create authorized target |
+| GET | `/api/v1/assets` | List authorized targets |
+| GET | `/api/v1/assets/{asset_id}` | Get one authorized target |
+| PATCH | `/api/v1/assets/{asset_id}` | Update label or status |
+| DELETE | `/api/v1/assets/{asset_id}` | Soft delete authorized target |
+| POST | `/api/v1/audits/web` | Roadmap web audit job |
+| POST | `/api/v1/audits/dns` | Roadmap DNS audit |
+| POST | `/api/v1/audits/ssl` | Roadmap SSL audit |
+| POST | `/api/v1/audits/ports` | Roadmap port audit |
+| GET | `/api/v1/jobs/{job_id}` | Roadmap job status |
+| GET | `/api/v1/findings/{id}` | Roadmap finding details |
+| POST | `/api/v1/incidents/{id}/actions/block-ip` | Roadmap approval-gated IP block |
+| POST | `/api/v1/incidents/{id}/actions/cloudflare-rate-limit` | Roadmap approval-gated Cloudflare rate-limit |
+| POST | `/api/v1/honeypot/events` | Roadmap honeypot event |
+| POST | `/api/v1/agents/advice` | Roadmap AI advice |
+| GET | `/api/v1/reports/{id}` | Roadmap report |
 
-## 3. Error modeli
+## 3. Error Model
 
 ```json
 {
   "error": {
     "code": "scope_denied",
-    "message": "Target whitelist ichida emas",
-    "request_id": "req_123"
+    "message": "Target is not whitelisted"
   }
 }
 ```
 
-## 4. Job lifecycle
+## 4. Auth
 
-```text
-queued -> running -> completed
-queued -> running -> failed
-queued -> cancelled
+- `/api/v1/assets` requires `X-API-Key` matching `API_SECRET_KEY`.
+- Telegram owner ID whitelist protects bot commands.
+- Dashboard/API JWT or session auth is roadmap.
+- Internal service token or mTLS is roadmap.
+
+## 5. Asset Whitelist Contract
+
+`POST /api/v1/assets` accepts:
+
+```json
+{
+  "asset_type": "domain",
+  "value": "example.com",
+  "label": "Main site"
+}
 ```
 
-## 5. Auth
+Allowed `asset_type` values:
 
-- Telegram owner ID whitelist
-- Dashboard/API uchun JWT/session — keyingi bosqich
-- Internal service token yoki mTLS — keyingi bosqich
+- `domain`
+- `ip`
+- `cidr`
+- `url`
 
-## 6. Scope validation
+Targets are normalized before persistence. Duplicates by `(asset_type, normalized_value)` return `409 duplicate_asset`. Deletes are soft deletes with `status="deleted"`.
 
-Har bir audit yoki defense actiondan oldin:
+## 6. Scope Validation
 
-1. target mavjudmi?
-2. target ownerga tegishlimi?
-3. whitelist ichidami?
-4. action xavf darajasi qanday?
-5. approval kerakmi?
+Every future audit or defense action must check:
+
+1. target exists
+2. target is active in the DB whitelist
+3. actor is authorized
+4. action risk level
+5. manual approval requirement
+6. audit log persistence
