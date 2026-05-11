@@ -79,7 +79,7 @@ services:
     env_file:
       - path: .env
         required: false
-    command: ["celery", "-A", "src.workers.celery_app", "worker", "--loglevel=INFO"]
+    command: ["celery", "-A", "src.workers.celery_app", "worker", "--beat", "--loglevel=INFO"]
     depends_on:
       postgres:
         condition: service_healthy

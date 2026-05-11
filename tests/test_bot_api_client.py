@@ -37,6 +37,30 @@ async def test_api_client_sends_api_key_and_lists_assets() -> None:
 
 
 @pytest.mark.asyncio
+async def test_api_client_fetches_defensive_intel_reports() -> None:
+    async def handler(request: Request) -> Response:
+        if request.url.path == "/api/v1/dns/asset-1":
+            return Response(200, json={"domain": "example.com", "a_records": ["1.1.1.1"], "spf": True})
+        if request.url.path == "/api/v1/ssl/asset-1":
+            return Response(200, json={"domain": "example.com", "issuer": "Let's Encrypt"})
+        if request.url.path == "/api/v1/subdomains/asset-1":
+            return Response(200, json={"domain": "example.com", "subdomains": []})
+        if request.url.path == "/api/v1/monitoring/asset-1":
+            return Response(200, json={"asset_id": "asset-1", "enabled": True})
+        return Response(404)
+
+    http_client = AsyncClient(transport=MockTransport(handler), base_url="http://api:8000")
+    client = SecPilotApiClient(base_url="http://api:8000", api_key="secret", http_client=http_client)
+
+    assert (await client.dns_audit("asset-1"))["spf"] is True
+    assert (await client.ssl_audit("asset-1"))["issuer"] == "Let's Encrypt"
+    assert (await client.subdomains("asset-1"))["subdomains"] == []
+    assert (await client.monitoring_status("asset-1"))["enabled"] is True
+
+    await http_client.aclose()
+
+
+@pytest.mark.asyncio
 async def test_api_client_maps_structured_api_errors() -> None:
     async def handler(_: Request) -> Response:
         return Response(409, json={"error": {"code": "duplicate_asset", "message": "Asset already exists."}})

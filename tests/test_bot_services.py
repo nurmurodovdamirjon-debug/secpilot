@@ -1,5 +1,13 @@
 from src.bot.api_client import BotAsset, HealthResult
-from src.bot.services import format_asset_list, format_status_message, is_asset_whitelisted
+from src.bot.services import (
+    format_asset_list,
+    format_dns_report,
+    format_monitoring_report,
+    format_ssl_report,
+    format_status_message,
+    format_subdomain_report,
+    is_asset_whitelisted,
+)
 
 
 def test_format_asset_list_handles_empty_state_in_uzbek() -> None:
@@ -82,3 +90,39 @@ def test_format_status_message_reads_not_ready_dependency_detail() -> None:
 
     assert "DB: xatolik" in message
     assert "Redis: ishlayapti" in message
+
+
+def test_format_dns_ssl_subdomain_and_monitoring_reports() -> None:
+    dns_message = format_dns_report(
+        {
+            "domain": "example.com",
+            "a_records": ["1.1.1.1"],
+            "mx_records": ["mail.example.com"],
+            "spf": True,
+            "dmarc": False,
+            "asn": "AS13335",
+            "provider": "Cloudflare",
+        }
+    )
+    ssl_message = format_ssl_report(
+        {
+            "domain": "example.com",
+            "issuer": "Let's Encrypt",
+            "days_remaining": 52,
+            "tls_version": "TLSv1.3",
+            "hsts": True,
+        }
+    )
+    subdomain_message = format_subdomain_report(
+        {"domain": "example.com", "subdomains": [{"name": "www.example.com", "first_seen": None}]}
+    )
+    monitoring_message = format_monitoring_report(
+        {"enabled": True, "last_status": "ok", "last_check_at": None, "last_detail": None}
+    )
+
+    assert "DNS Audit" in dns_message
+    assert "SPF: bor" in dns_message
+    assert "SSL/TLS Audit" in ssl_message
+    assert "52 kun" in ssl_message
+    assert "www.example.com" in subdomain_message
+    assert "Monitoring: yoqilgan" in monitoring_message

@@ -151,6 +151,18 @@ entry_hash TEXT
 created_at TIMESTAMPTZ DEFAULT now()
 ```
 
+### monitoring_states
+
+```sql
+id UUID PRIMARY KEY
+asset_id UUID REFERENCES assets(id) UNIQUE NOT NULL
+enabled BOOLEAN DEFAULT false
+last_check_at TIMESTAMPTZ
+last_status TEXT
+last_detail JSONB
+created_at TIMESTAMPTZ DEFAULT now()
+```
+
 ### architecture_advice
 
 ```sql
@@ -172,6 +184,7 @@ CREATE INDEX idx_incidents_timeline ON incidents USING GIN(timeline_jsonb);
 CREATE INDEX idx_jobs_status_created ON jobs(status, created_at);
 CREATE INDEX idx_audit_log_created ON audit_log(created_at);
 CREATE UNIQUE INDEX ix_assets_type_normalized_value ON assets(asset_type, normalized_value);
+CREATE UNIQUE INDEX ix_monitoring_states_asset_id ON monitoring_states(asset_id);
 ```
 
 ## 4. Retention

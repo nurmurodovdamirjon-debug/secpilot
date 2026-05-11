@@ -42,6 +42,7 @@ class Asset(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     jobs: Mapped[list["Job"]] = relationship(back_populates="asset")
     alerts: Mapped[list["Alert"]] = relationship(back_populates="asset")
     incidents: Mapped[list["Incident"]] = relationship(back_populates="asset")
+    monitoring_state: Mapped["MonitoringState | None"] = relationship(back_populates="asset")
 
 
 class Job(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -104,3 +105,16 @@ class AuditLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     meta_jsonb: Mapped[dict[str, Any] | None] = mapped_column(json_dict_type())
     prev_hash: Mapped[str | None] = mapped_column(String(128))
     entry_hash: Mapped[str | None] = mapped_column(String(128))
+
+
+class MonitoringState(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "monitoring_states"
+    __table_args__ = (Index("ix_monitoring_states_asset_id", "asset_id", unique=True),)
+
+    asset_id: Mapped[UUID] = mapped_column(ForeignKey("assets.id"), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    last_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_status: Mapped[str | None] = mapped_column(String(50))
+    last_detail: Mapped[dict[str, Any] | None] = mapped_column(json_dict_type())
+
+    asset: Mapped[Asset] = relationship(back_populates="monitoring_state")

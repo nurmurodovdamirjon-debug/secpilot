@@ -112,6 +112,135 @@ paths:
           description: Asset soft deleted
         "404":
           description: Asset not found
+  /api/v1/dns/{asset_id}:
+    get:
+      summary: Defensive DNS audit for an active whitelisted domain or URL asset
+      description: Passive DNS record collection only. Requires the asset to be active and whitelisted.
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: DNS audit result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DnsAuditResult"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Scope denied
+        "404":
+          description: Asset not found
+        "429":
+          description: Rate limit exceeded
+  /api/v1/ssl/{asset_id}:
+    get:
+      summary: Defensive SSL/TLS audit for an active whitelisted domain or URL asset
+      description: HTTPS certificate, TLS version, expiry, and HSTS summary only.
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: SSL/TLS audit result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SslAuditResult"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Scope denied
+        "404":
+          description: Asset not found
+        "429":
+          description: Rate limit exceeded
+  /api/v1/subdomains/{asset_id}:
+    get:
+      summary: Passive subdomain discovery for an active whitelisted domain or URL asset
+      description: Uses passive certificate transparency sources only. No brute force or active probing.
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: Passive subdomain discovery result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubdomainDiscoveryResult"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Scope denied
+        "404":
+          description: Asset not found
+        "429":
+          description: Rate limit exceeded
+  /api/v1/monitoring/{asset_id}:
+    get:
+      summary: Monitoring status for an active whitelisted domain or URL asset
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: Monitoring status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitoringStatus"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Scope denied
+        "404":
+          description: Asset not found
+  /api/v1/monitoring/{asset_id}/enable:
+    post:
+      summary: Enable defensive monitoring for an active whitelisted domain or URL asset
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: Monitoring enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitoringStatus"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Scope denied
+        "404":
+          description: Asset not found
+  /api/v1/monitoring/{asset_id}/disable:
+    post:
+      summary: Disable defensive monitoring for an active whitelisted domain or URL asset
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssetId"
+      responses:
+        "200":
+          description: Monitoring disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitoringStatus"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Scope denied
+        "404":
+          description: Asset not found
   /api/v1/audits/web:
     post:
       summary: Roadmap create web audit job
@@ -225,6 +354,118 @@ components:
         created_at:
           type: string
           format: date-time
+    DnsAuditResult:
+      type: object
+      properties:
+        domain:
+          type: string
+        a_records:
+          type: array
+          items:
+            type: string
+        aaaa_records:
+          type: array
+          items:
+            type: string
+        mx_records:
+          type: array
+          items:
+            type: string
+        ns_records:
+          type: array
+          items:
+            type: string
+        txt_records:
+          type: array
+          items:
+            type: string
+        cname_records:
+          type: array
+          items:
+            type: string
+        spf:
+          type: boolean
+        dmarc:
+          type: boolean
+        asn:
+          type:
+            - string
+            - "null"
+        country:
+          type:
+            - string
+            - "null"
+        provider:
+          type:
+            - string
+            - "null"
+    SslAuditResult:
+      type: object
+      properties:
+        domain:
+          type: string
+        issuer:
+          type:
+            - string
+            - "null"
+        expires_at:
+          type:
+            - string
+            - "null"
+        days_remaining:
+          type:
+            - integer
+            - "null"
+        tls_version:
+          type:
+            - string
+            - "null"
+        https_available:
+          type: boolean
+        hsts:
+          type: boolean
+    SubdomainDiscoveryResult:
+      type: object
+      properties:
+        domain:
+          type: string
+        subdomains:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              first_seen:
+                type:
+                  - string
+                  - "null"
+        sources:
+          type: array
+          items:
+            type: string
+    MonitoringStatus:
+      type: object
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+        enabled:
+          type: boolean
+        last_check_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        last_status:
+          type:
+            - string
+            - "null"
+        last_detail:
+          type:
+            - object
+            - "null"
+          additionalProperties: true
     WebAuditRequest:
       type: object
       required:

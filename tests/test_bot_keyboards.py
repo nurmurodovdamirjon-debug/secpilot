@@ -8,6 +8,10 @@ def test_main_menu_keyboard_contains_expected_uzbek_buttons() -> None:
     assert labels == MENU_BUTTONS
     assert "📊 Status" in labels
     assert "➕ Asset qo‘shish" in labels
+    assert "🌐 DNS Audit" in labels
+    assert "🔐 SSL Audit" in labels
+    assert "🔎 Subdomainlar" in labels
+    assert "📡 Monitoring" in labels
     assert "ℹ️ Yordam" in labels
 
 

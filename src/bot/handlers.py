@@ -12,16 +12,31 @@ from src.bot.keyboards import (
     MENU_ASSETS,
     MENU_CHECK_ASSET,
     MENU_DELETE_ASSET,
+    MENU_DNS_AUDIT,
     MENU_HELP,
+    MENU_MONITORING,
     MENU_REPORTS,
     MENU_SETTINGS,
+    MENU_SSL_AUDIT,
     MENU_STATUS,
+    MENU_SUBDOMAINS,
+    asset_action_keyboard,
     asset_delete_keyboard,
     asset_type_keyboard,
     confirm_delete_keyboard,
     main_menu_keyboard,
+    monitoring_action_keyboard,
 )
-from src.bot.services import format_api_error, format_asset_list, format_status_message, is_asset_whitelisted
+from src.bot.services import (
+    format_api_error,
+    format_asset_list,
+    format_dns_report,
+    format_monitoring_report,
+    format_ssl_report,
+    format_status_message,
+    format_subdomain_report,
+    is_asset_whitelisted,
+)
 from src.bot.states import AddAssetStates, CheckAssetStates
 from src.core.config import Settings, get_settings
 
@@ -77,6 +92,7 @@ async def help_command(message: Message) -> None:
         "/add_asset — asset qo‘shish\n"
         "/check_asset — asset whitelistda bor-yo‘qligini tekshirish\n"
         "/delete_asset — assetni soft delete qilish\n"
+        "DNS Audit, SSL Audit, Subdomainlar va Monitoring tugmalari — faqat whitelistdagi assetlar uchun\n"
         "/help — yordam\n\n"
         "Eslatma: SecPilot Defensive-only siyosatda ishlaydi. Malware, phishing, exploit, "
         "hack-back, credential theft va unauthorized scanning taqiqlangan.",
@@ -216,6 +232,79 @@ async def delete_asset_command(message: Message) -> None:
         await client.close()
 
 
+@router.message(Command("dns"))
+@router.message(F.text == MENU_DNS_AUDIT)
+async def dns_audit_command(message: Message) -> None:
+    await _send_asset_action_selection(message, action="dns_audit", prompt="DNS audit uchun assetni tanlang:")
+
+
+@router.callback_query(F.data.startswith("dns_audit:"))
+async def dns_audit_selected(callback: CallbackQuery) -> None:
+    await _run_intel_callback(callback, action_name="DNS audit", client_method="dns_audit", formatter=format_dns_report)
+
+
+@router.message(Command("ssl"))
+@router.message(F.text == MENU_SSL_AUDIT)
+async def ssl_audit_command(message: Message) -> None:
+    await _send_asset_action_selection(message, action="ssl_audit", prompt="SSL audit uchun assetni tanlang:")
+
+
+@router.callback_query(F.data.startswith("ssl_audit:"))
+async def ssl_audit_selected(callback: CallbackQuery) -> None:
+    await _run_intel_callback(callback, action_name="SSL audit", client_method="ssl_audit", formatter=format_ssl_report)
+
+
+@router.message(Command("subdomains"))
+@router.message(F.text == MENU_SUBDOMAINS)
+async def subdomains_command(message: Message) -> None:
+    await _send_asset_action_selection(message, action="subdomains", prompt="Subdomainlar uchun assetni tanlang:")
+
+
+@router.callback_query(F.data.startswith("subdomains:"))
+async def subdomains_selected(callback: CallbackQuery) -> None:
+    await _run_intel_callback(
+        callback,
+        action_name="Passive subdomain qidiruv",
+        client_method="subdomains",
+        formatter=format_subdomain_report,
+    )
+
+
+@router.message(Command("monitoring"))
+@router.message(F.text == MENU_MONITORING)
+async def monitoring_command(message: Message) -> None:
+    await _send_asset_action_selection(message, action="monitoring", prompt="Monitoring uchun assetni tanlang:")
+
+
+@router.callback_query(F.data.startswith("monitoring:"))
+async def monitoring_selected(callback: CallbackQuery) -> None:
+    settings = get_settings()
+    if not await _require_admin_callback(callback, settings):
+        return
+    asset_id = (callback.data or "").split(":", 1)[1]
+    client = build_api_client(settings)
+    try:
+        payload = await client.monitoring_status(asset_id)
+        if callback.message is not None:
+            await callback.message.answer(format_monitoring_report(payload), reply_markup=monitoring_action_keyboard(asset_id))
+    except BotApiError as exc:
+        if callback.message is not None:
+            await callback.message.answer(format_api_error(exc), reply_markup=main_menu_keyboard())
+    finally:
+        await client.close()
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("monitoring_enable:"))
+async def monitoring_enable_selected(callback: CallbackQuery) -> None:
+    await _toggle_monitoring(callback, enabled=True)
+
+
+@router.callback_query(F.data.startswith("monitoring_disable:"))
+async def monitoring_disable_selected(callback: CallbackQuery) -> None:
+    await _toggle_monitoring(callback, enabled=False)
+
+
 @router.callback_query(F.data.startswith("delete_asset:"))
 async def delete_asset_selected(callback: CallbackQuery) -> None:
     settings = get_settings()
@@ -277,3 +366,68 @@ def _example_for_asset_type(asset_type: str) -> str:
         "url": "https://example.com",
     }
     return examples.get(asset_type, "example.com")
+
+
+async def _send_asset_action_selection(message: Message, *, action: str, prompt: str) -> None:
+    settings = get_settings()
+    if not await _require_admin(message, settings):
+        return
+    client = build_api_client(settings)
+    try:
+        assets = [
+            asset
+            for asset in await client.list_assets()
+            if asset.status == "active" and asset.asset_type in {"domain", "url"}
+        ]
+        if not assets:
+            await message.answer("Bu amal uchun domain yoki url asset qo‘shilmagan.", reply_markup=main_menu_keyboard())
+            return
+        await message.answer(prompt, reply_markup=asset_action_keyboard(action, [(asset.id, asset.value) for asset in assets]))
+    except BotApiError as exc:
+        await message.answer(format_api_error(exc), reply_markup=main_menu_keyboard())
+    finally:
+        await client.close()
+
+
+async def _run_intel_callback(
+    callback: CallbackQuery,
+    *,
+    action_name: str,
+    client_method: str,
+    formatter,
+) -> None:
+    settings = get_settings()
+    if not await _require_admin_callback(callback, settings):
+        return
+    asset_id = (callback.data or "").split(":", 1)[1]
+    if callback.message is not None:
+        await callback.message.answer(f"{action_name} bajarilmoqda...")
+    client = build_api_client(settings)
+    try:
+        payload = await getattr(client, client_method)(asset_id)
+        if callback.message is not None:
+            await callback.message.answer(formatter(payload), reply_markup=main_menu_keyboard())
+    except BotApiError as exc:
+        if callback.message is not None:
+            await callback.message.answer(format_api_error(exc), reply_markup=main_menu_keyboard())
+    finally:
+        await client.close()
+    await callback.answer()
+
+
+async def _toggle_monitoring(callback: CallbackQuery, *, enabled: bool) -> None:
+    settings = get_settings()
+    if not await _require_admin_callback(callback, settings):
+        return
+    asset_id = (callback.data or "").split(":", 1)[1]
+    client = build_api_client(settings)
+    try:
+        payload = await client.enable_monitoring(asset_id) if enabled else await client.disable_monitoring(asset_id)
+        if callback.message is not None:
+            await callback.message.answer(format_monitoring_report(payload), reply_markup=main_menu_keyboard())
+    except BotApiError as exc:
+        if callback.message is not None:
+            await callback.message.answer(format_api_error(exc), reply_markup=main_menu_keyboard())
+    finally:
+        await client.close()
+    await callback.answer()

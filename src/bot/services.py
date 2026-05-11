@@ -76,6 +76,63 @@ def format_api_error(error: BotApiError) -> str:
     return "Backend API xatolik qaytardi. Keyinroq qayta urinib ko‘ring."
 
 
+def format_dns_report(payload: dict[str, object]) -> str:
+    return "\n".join(
+        [
+            f"🌐 DNS Audit: {payload.get('domain')}",
+            f"A: {_join_values(payload.get('a_records'))}",
+            f"AAAA: {_join_values(payload.get('aaaa_records'))}",
+            f"MX: {_join_values(payload.get('mx_records'))}",
+            f"NS: {_join_values(payload.get('ns_records'))}",
+            f"CNAME: {_join_values(payload.get('cname_records'))}",
+            f"SPF: {_bool_label(payload.get('spf'))}",
+            f"DMARC: {_bool_label(payload.get('dmarc'))}",
+            f"ASN: {payload.get('asn') or 'noma’lum'}",
+            f"Provider: {payload.get('provider') or 'noma’lum'}",
+        ]
+    )
+
+
+def format_ssl_report(payload: dict[str, object]) -> str:
+    days = payload.get("days_remaining")
+    days_text = f"{days} kun" if days is not None else "noma’lum"
+    return "\n".join(
+        [
+            f"🔐 SSL/TLS Audit: {payload.get('domain')}",
+            f"Issuer: {payload.get('issuer') or 'noma’lum'}",
+            f"Tugash sanasi: {payload.get('expires_at') or 'noma’lum'}",
+            f"Qolgan muddat: {days_text}",
+            f"TLS: {payload.get('tls_version') or 'noma’lum'}",
+            f"HTTPS: {_bool_label(payload.get('https_available'))}",
+            f"HSTS: {_bool_label(payload.get('hsts'))}",
+        ]
+    )
+
+
+def format_subdomain_report(payload: dict[str, object]) -> str:
+    subdomains = payload.get("subdomains")
+    lines = [f"🔎 Subdomainlar: {payload.get('domain')}"]
+    if not isinstance(subdomains, list) or not subdomains:
+        lines.append("Passive manbalarda subdomain topilmadi.")
+        return "\n".join(lines)
+    for item in subdomains[:30]:
+        if isinstance(item, dict):
+            first_seen = item.get("first_seen") or "noma’lum"
+            lines.append(f"- {item.get('name')} (first seen: {first_seen})")
+    return "\n".join(lines)
+
+
+def format_monitoring_report(payload: dict[str, object]) -> str:
+    enabled = "yoqilgan" if payload.get("enabled") is True else "o‘chirilgan"
+    return "\n".join(
+        [
+            f"📡 Monitoring: {enabled}",
+            f"So‘nggi tekshiruv: {payload.get('last_check_at') or 'hali yo‘q'}",
+            f"So‘nggi status: {payload.get('last_status') or 'noma’lum'}",
+        ]
+    )
+
+
 def _dependency_label(value: object) -> str:
     if value is True:
         return "ishlayapti"
@@ -94,3 +151,13 @@ def _extract_dependencies(payload: dict[str, object]) -> dict[str, object]:
         if isinstance(detail_dependencies, dict):
             return detail_dependencies
     return {}
+
+
+def _join_values(value: object) -> str:
+    if isinstance(value, list) and value:
+        return ", ".join(str(item) for item in value)
+    return "yo‘q"
+
+
+def _bool_label(value: object) -> str:
+    return "bor" if value is True else "yo‘q"

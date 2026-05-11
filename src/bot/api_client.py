@@ -84,6 +84,24 @@ class SecPilotApiClient:
     async def delete_asset(self, asset_id: str) -> None:
         await self._request("DELETE", f"/api/v1/assets/{asset_id}", expect_json=False)
 
+    async def dns_audit(self, asset_id: str) -> dict[str, Any]:
+        return await self._request("GET", f"/api/v1/dns/{asset_id}")
+
+    async def ssl_audit(self, asset_id: str) -> dict[str, Any]:
+        return await self._request("GET", f"/api/v1/ssl/{asset_id}")
+
+    async def subdomains(self, asset_id: str) -> dict[str, Any]:
+        return await self._request("GET", f"/api/v1/subdomains/{asset_id}")
+
+    async def monitoring_status(self, asset_id: str) -> dict[str, Any]:
+        return await self._request("GET", f"/api/v1/monitoring/{asset_id}")
+
+    async def enable_monitoring(self, asset_id: str) -> dict[str, Any]:
+        return await self._request("POST", f"/api/v1/monitoring/{asset_id}/enable")
+
+    async def disable_monitoring(self, asset_id: str) -> dict[str, Any]:
+        return await self._request("POST", f"/api/v1/monitoring/{asset_id}/disable")
+
     async def live(self) -> HealthResult:
         return await self._health_request("/health/live")
 

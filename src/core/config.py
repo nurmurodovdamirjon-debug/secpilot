@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     AUTO_BLOCK_ENABLED: bool = False
     AUTO_BLOCK_MAX_ACTIONS_PER_10M: int = 10
     DEFAULT_TEMP_BLOCK_SECONDS: int = 3600
+    INTEL_TIMEOUT_SECONDS: float = 5.0
+    INTEL_RATE_LIMIT_PER_MINUTE: int = 30
+    MONITORING_INTERVAL_SECONDS: int = 300
 
     HONEYPOT_ENABLED: bool = True
     CANARY_BASE_URL: str = "https://token.example.uz"

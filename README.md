@@ -10,7 +10,8 @@ Implemented now:
 
 - FastAPI app with `/health/live`, `/health/ready`, and `/metrics`
 - API-key protected `/api/v1/assets` CRUD for authorized target management
-- aiogram 3 Telegram bot with Uzbek admin UX, reply keyboard, asset list/add/check/delete flows, status, help, and safe placeholders
+- Defensive-only DNS, SSL/TLS, passive subdomain, and monitoring endpoints for active domain/url assets
+- aiogram 3 Telegram bot with Uzbek admin UX, reply keyboard, asset list/add/check/delete, DNS, SSL, subdomain, monitoring, status, help, and safe placeholders
 - Pydantic settings loaded from environment variables
 - SQLAlchemy/Alembic skeleton for PostgreSQL
 - DB-backed target whitelist persistence on `assets`
@@ -24,7 +25,7 @@ Implemented now:
 
 Roadmap, not production behavior yet:
 
-- Full server, Docker, Nginx, DB, Redis, SSL, DNS, and HTTP header monitoring
+- Full server, Docker, Nginx, DB, Redis, and HTTP header monitoring
 - Honeypot endpoints and canary tokens
 - Threat intelligence enrichment
 - Cloudflare WAF/rate-limit/Under Attack integrations
@@ -59,6 +60,9 @@ Forbidden behavior:
 Mandatory controls:
 
 - Target whitelist before audit, monitoring, or defense actions
+- Passive intelligence only for active `domain` or `url` assets already in the DB whitelist
+- Rate limiting and timeouts for defensive intelligence endpoints
+- Celery monitoring checks run on the configured `MONITORING_INTERVAL_SECONDS` cadence
 - Manual approval for high-risk actions
 - Reversible defense actions only
 - Audit logging for risky attempts, denials, approvals, and results
@@ -99,6 +103,10 @@ Telegram bot commands:
 /add_asset
 /check_asset
 /delete_asset
+/dns
+/ssl
+/subdomains
+/monitoring
 /help
 ```
 
@@ -107,9 +115,13 @@ Bot menu buttons:
 ```text
 📊 Status
 📁 Assetlar
-➕ Asset qo‘shish
+➕ Asset qo'shish
 🔎 Asset tekshirish
-🗑 Asset o‘chirish
+🌐 DNS Audit
+🔐 SSL Audit
+🔎 Subdomainlar
+📡 Monitoring
+🗑 Asset o'chirish
 📄 Hisobot
 ⚙️ Sozlamalar
 ℹ️ Yordam
@@ -121,10 +133,12 @@ Manual Telegram smoke test:
 2. Run migrations with `alembic upgrade head`.
 3. Start the stack with `docker compose up --build`.
 4. Send `/start` from an admin Telegram account and verify the Uzbek menu appears.
-5. Use `➕ Asset qo‘shish` to add `domain -> example.com`.
+5. Use `➕ Asset qo'shish` to add `domain -> example.com`.
 6. Use `📁 Assetlar` to confirm the asset appears.
 7. Use `🔎 Asset tekshirish` with `example.com` and verify it is allowed.
-8. Use `🗑 Asset o‘chirish`, confirm deletion, then verify the asset list is empty.
+8. Use `🌐 DNS Audit`, `🔐 SSL Audit`, and `🔎 Subdomainlar` for the same whitelisted asset.
+9. Use `📡 Monitoring` to view status and enable/disable monitoring.
+10. Use `🗑 Asset o'chirish`, confirm deletion, then verify the asset list is empty.
 
 Run migrations:
 
