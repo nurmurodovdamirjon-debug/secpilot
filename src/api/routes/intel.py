@@ -4,6 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 import structlog
 
@@ -181,7 +182,10 @@ def _run_monitoring_status(
 ) -> MonitoringStatus:
     asset, _domain = _get_authorized_asset_for_action(db, asset_id, actor, "monitoring.status")
     logger.info("monitoring_status_requested", asset_id=str(asset_id))
-    status = monitoring_status_from_state(get_or_create_monitoring_state(db, asset))
+    try:
+        status = monitoring_status_from_state(get_or_create_monitoring_state(db, asset))
+    except SQLAlchemyError as exc:
+        _raise_database_schema_not_ready(asset_id=asset_id, action="monitoring.status", exc=exc)
     return with_monitoring_scheduler_status(status, settings)
 
 
@@ -193,7 +197,11 @@ def enable_monitoring_endpoint(
     settings: Settings = Depends(get_settings),
 ) -> MonitoringStatus:
     asset, _ = _get_authorized_asset_for_action(db, asset_id, actor, "monitoring.enable")
-    status = set_monitoring_enabled(db, asset=asset, enabled=True, actor_type=actor[0], actor_id=actor[1])
+    logger.info("monitoring_enable_requested", asset_id=str(asset_id))
+    try:
+        status = set_monitoring_enabled(db, asset=asset, enabled=True, actor_type=actor[0], actor_id=actor[1])
+    except SQLAlchemyError as exc:
+        _raise_database_schema_not_ready(asset_id=asset_id, action="monitoring.enable", exc=exc)
     return with_monitoring_scheduler_status(status, settings)
 
 
@@ -205,8 +213,26 @@ def disable_monitoring_endpoint(
     settings: Settings = Depends(get_settings),
 ) -> MonitoringStatus:
     asset, _ = _get_authorized_asset_for_action(db, asset_id, actor, "monitoring.disable")
-    status = set_monitoring_enabled(db, asset=asset, enabled=False, actor_type=actor[0], actor_id=actor[1])
+    logger.info("monitoring_disable_requested", asset_id=str(asset_id))
+    try:
+        status = set_monitoring_enabled(db, asset=asset, enabled=False, actor_type=actor[0], actor_id=actor[1])
+    except SQLAlchemyError as exc:
+        _raise_database_schema_not_ready(asset_id=asset_id, action="monitoring.disable", exc=exc)
     return with_monitoring_scheduler_status(status, settings)
+
+
+def _raise_database_schema_not_ready(*, asset_id: UUID, action: str, exc: SQLAlchemyError) -> None:
+    logger.exception(
+        "monitoring_database_schema_not_ready",
+        asset_id=str(asset_id),
+        action=action,
+        error=str(exc),
+    )
+    raise ApiError(
+        status_code=503,
+        code="database_schema_not_ready",
+        message="Required database schema is not ready. Run Alembic migrations before using monitoring.",
+    ) from exc
 
 
 def _check_rate_limit(actor: tuple[str, str], action: str, settings: Settings) -> None:

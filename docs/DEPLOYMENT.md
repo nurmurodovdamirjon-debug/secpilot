@@ -37,6 +37,14 @@ redis
 - PostgreSQL connection
 - Telegram bot auth
 
+If Telegram monitoring returns `database_schema_not_ready` after an existing deployment, run:
+
+```bash
+docker compose exec api alembic upgrade head
+```
+
+The Compose API service runs `alembic upgrade head` before `uvicorn` on new starts, and workers wait for the API readiness healthcheck before starting.
+
 ## 5. Production checklist
 
 - [ ] `.env` to‘ldirilgan

@@ -14,8 +14,8 @@
 |---|---|---|
 | GET | `/health` | Liveness alias for container and bot checks |
 | GET | `/health/live` | Liveness |
-| GET | `/ready` | Readiness alias for Docker healthchecks |
-| GET | `/health/ready` | Readiness |
+| GET | `/ready` | Readiness alias for Docker healthchecks; checks PostgreSQL, Redis, and required schema |
+| GET | `/health/ready` | Readiness; checks PostgreSQL, Redis, and required schema |
 | GET | `/metrics` | Prometheus metrics |
 | POST | `/api/v1/assets` | Create authorized target |
 | GET | `/api/v1/assets` | List authorized targets |

@@ -150,6 +150,14 @@ alembic upgrade head
 docker compose exec api alembic upgrade head
 ```
 
+If monitoring returns `database_schema_not_ready` after an existing deployment, run the migration once:
+
+```bash
+docker compose exec api alembic upgrade head
+```
+
+New Docker Compose starts run `alembic upgrade head` automatically before the API starts.
+
 ## Tests And Validation
 
 Run the local test suite:

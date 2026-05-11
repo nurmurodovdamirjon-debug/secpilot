@@ -87,6 +87,8 @@ def format_api_error(error: BotApiError) -> str:
         return "Asset qiymati noto‘g‘ri. Domain, IP, CIDR yoki URL formatini tekshiring."
     if error.code == "unauthorized":
         return "Bot backend API bilan avtorizatsiyadan o‘ta olmadi. API kalit sozlamasini tekshiring."
+    if error.code == "database_schema_not_ready":
+        return "Backend migration/schema tayyor emas. Admin deploymentni tekshirsin."
     if error.code in {"asset_not_found", "asset_not_active", "asset_type_not_allowed", "invalid_asset_target"}:
         return "Unauthorized asset. Faqat whitelistdagi active domain yoki url assetlar uchun ruxsat bor."
     return "Backend API xatolik qaytardi. Keyinroq qayta urinib ko‘ring."

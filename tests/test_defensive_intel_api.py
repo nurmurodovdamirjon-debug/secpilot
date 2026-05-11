@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.api.main import app
@@ -165,6 +166,29 @@ def test_monitoring_status_contract_endpoint_returns_scheduler_status(db_session
     assert response.status_code == 200
     assert response.json()["asset_id"] == str(asset.id)
     assert response.json()["scheduler"]["backend"] == "celery"
+
+
+def test_monitoring_status_returns_structured_error_when_schema_is_not_ready(
+    db_session: Session,
+    monkeypatch,
+) -> None:
+    app.dependency_overrides[get_db_session] = lambda: db_session
+    app.dependency_overrides[get_settings] = _settings
+    asset = _add_asset(db_session)
+
+    def raise_schema_error(*args, **kwargs):
+        raise SQLAlchemyError("relation monitoring_states does not exist")
+
+    monkeypatch.setattr("src.api.routes.intel.get_or_create_monitoring_state", raise_schema_error)
+    response = TestClient(app, raise_server_exceptions=False).post(
+        "/api/v1/monitoring/status",
+        headers=_headers(),
+        json={"asset_id": str(asset.id)},
+    )
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "database_schema_not_ready"
 
 
 def test_intel_endpoints_reject_unknown_asset(db_session: Session) -> None:

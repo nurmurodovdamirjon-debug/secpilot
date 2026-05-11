@@ -1,5 +1,6 @@
-from src.bot.api_client import BotAsset, HealthResult
+from src.bot.api_client import BotApiError, BotAsset, HealthResult
 from src.bot.services import (
+    format_api_error,
     format_asset_list,
     format_dns_report,
     format_monitoring_report,
@@ -126,3 +127,16 @@ def test_format_dns_ssl_subdomain_and_monitoring_reports() -> None:
     assert "52 kun" in ssl_message
     assert "www.example.com" in subdomain_message
     assert "Monitoring: yoqilgan" in monitoring_message
+
+
+def test_format_api_error_reports_database_schema_not_ready() -> None:
+    message = format_api_error(
+        BotApiError(
+            code="database_schema_not_ready",
+            message="Required database schema is not ready.",
+            status_code=503,
+        )
+    )
+
+    assert "migration/schema" in message
+    assert "Admin" in message
