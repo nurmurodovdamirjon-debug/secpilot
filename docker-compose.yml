@@ -59,6 +59,8 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      API_BASE_URL: http://api:8000
     command: ["python", "-m", "src.bot.main"]
     depends_on:
       api:
